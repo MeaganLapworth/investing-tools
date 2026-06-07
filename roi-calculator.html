@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ROI Calculator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0d0f12;
+    --surface:  #13161b;
+    --surface2: #1a1e25;
+    --surface3: #21262f;
+    --border:   #2a303b;
+    --border2:  #353c4a;
+    --text:     #e2e8f0;
+    --muted:    #7a8699;
+    --faint:    #3d4757;
+    --accent:   #3b82f6;
+    --accent2:  #1d4ed8;
+    --gain:     #22c55e;
+    --gain-bg:  #052e16;
+    --loss:     #ef4444;
+    --loss-bg:  #2d0a0a;
+    --amber:    #f59e0b;
+    --mono:     'IBM Plex Mono', monospace;
+    --sans:     'IBM Plex Sans', sans-serif;
+    --radius:   8px;
+    --radius-lg: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* subtle grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--surface2) 1px, transparent 1px),
+      linear-gradient(90deg, var(--surface2) 1px, transparent 1px);
+    background-size: 40px 40px;
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* ── Header ── */
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    margin-bottom: 2rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(59,130,246,0.1);
+    border: 1px solid rgba(59,130,246,0.25);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Sections ── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .section-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 1.1rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── Grid layouts ── */
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+
+  @media (max-width: 640px) {
+    .grid4 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .grid3 { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+
+  /* ── Form fields ── */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: var(--mono);
+    letter-spacing: 0.02em;
+  }
+  .field input,
+  .field textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 8px 12px;
+    width: 100%;
+    transition: border-color 0.15s, background 0.15s;
+    outline: none;
+  }
+  .field input:hover,
+  .field textarea:hover { border-color: var(--border2); }
+  .field input:focus,
+  .field textarea:focus {
+    border-color: var(--accent);
+    background: var(--surface3);
+    box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+  }
+  .field input[type="date"] { color-scheme: dark; }
+  .field textarea { resize: vertical; min-height: 64px; font-family: var(--sans); font-size: 13px; }
+
+  /* ── Toggle ── */
+  .toggle-wrap {
+    display: flex;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 3px;
+    gap: 3px;
+  }
+  .toggle-btn {
+    flex: 1;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-family: var(--mono);
+    background: transparent;
+    border: none;
+    border-radius: 5px;
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    white-space: nowrap;
+  }
+  .toggle-btn.active {
+    background: var(--accent);
+    color: #fff;
+  }
+
+  /* ── Calculate button ── */
+  .calc-btn {
+    width: 100%;
+    padding: 12px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    margin-top: 4px;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .calc-btn:hover { background: var(--accent2); }
+  .calc-btn:active { transform: scale(0.99); }
+
+  /* ── Result stat cards ── */
+  .results-section {
+    margin-top: 1.5rem;
+    display: none;
+    animation: fadeUp 0.3s ease;
+  }
+  .results-section.visible { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .stat-card.highlight-gain {
+    border-color: rgba(34,197,94,0.35);
+    background: rgba(34,197,94,0.04);
+  }
+  .stat-card.highlight-loss {
+    border-color: rgba(239,68,68,0.35);
+    background: rgba(239,68,68,0.04);
+  }
+
+  .stat-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .stat-value {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 500;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .stat-value.gain { color: var(--gain); }
+  .stat-value.loss { color: var(--loss); }
+  .stat-value.sm   { font-size: 20px; }
+
+  .stat-sub {
+    font-size: 12px;
+    color: var(--faint);
+    font-family: var(--mono);
+  }
+
+  /* ── Secondary stats row ── */
+  .sec-stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.9rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sec-stat .stat-label { font-size: 11px; }
+  .sec-stat .stat-value { font-size: 17px; }
+
+  /* ── Period badge ── */
+  .period-pill {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    background: rgba(59,130,246,0.12);
+    color: var(--accent);
+    border: 1px solid rgba(59,130,246,0.25);
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+
+  /* ── Notes display ── */
+  .notes-display {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-top: 12px;
+  }
+  .notes-display .notes-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .notes-display p { font-size: 13px; color: var(--muted); line-height: 1.5; }
+
+  /* ── Divider ── */
+  .divider { height: 1px; background: var(--border); margin: 1rem 0; }
+
+  /* ── Reset link ── */
+  .reset-btn {
+    background: none;
+    border: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    padding: 0;
+    margin-top: 1rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .reset-btn:hover { color: var(--text); }
+
+  .hidden { display: none !important; }
+
+  /* ── Ticker label in results ── */
+  .results-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.1rem;
+  }
+  .results-header h2 {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .ticker-badge {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--amber);
+    background: rgba(245,158,11,0.1);
+    border: 1px solid rgba(245,158,11,0.25);
+    padding: 2px 10px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>ROI Calculator</h1>
+    <span class="header-tag">DASHBOARD</span>
+  </div>
+
+  <!-- Asset details -->
+  <div class="section">
+    <div class="section-title">Asset details</div>
+    <div class="grid2" style="margin-bottom:14px">
+      <div class="field">
+        <label>Ticker / asset name</label>
+        <input type="text" id="ticker" placeholder="e.g. AAPL, SPY, BTC">
+      </div>
+      <div class="field">
+        <label>Entry mode</label>
+        <div class="toggle-wrap">
+          <button type="button" class="toggle-btn active" id="btn-per-share" onclick="setMode('per-share')">Price per share</button>
+          <button type="button" class="toggle-btn" id="btn-total" onclick="setMode('total')">Total amount</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="per-share-inputs" class="grid4">
+      <div class="field">
+        <label>Buy price / share ($)</label>
+        <input type="number" id="buy-price" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Shares bought</label>
+        <input type="number" id="shares-buy" placeholder="0" min="0" step="0.001">
+      </div>
+      <div class="field">
+        <label>Sell price / share ($)</label>
+        <input type="number" id="sell-price" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Shares sold</label>
+        <input type="number" id="shares-sell" placeholder="0" min="0" step="0.001">
+      </div>
+    </div>
+
+    <div id="total-inputs" class="grid2 hidden">
+      <div class="field">
+        <label>Total amount invested ($)</label>
+        <input type="number" id="total-invested" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Total amount received ($)</label>
+        <input type="number" id="total-received" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+  </div>
+
+  <!-- Holding period -->
+  <div class="section">
+    <div class="section-title">Holding period</div>
+    <div class="grid2">
+      <div class="field">
+        <label>Buy date</label>
+        <input type="date" id="buy-date">
+      </div>
+      <div class="field">
+        <label>Sell date</label>
+        <input type="date" id="sell-date">
+      </div>
+    </div>
+  </div>
+
+  <!-- Adjustments -->
+  <div class="section">
+    <div class="section-title">Adjustments (optional)</div>
+    <div class="grid3" style="margin-bottom:14px">
+      <div class="field">
+        <label>Buy-side fees ($)</label>
+        <input type="number" id="fee-buy" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Sell-side fees ($)</label>
+        <input type="number" id="fee-sell" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="field">
+        <label>Dividends received ($)</label>
+        <input type="number" id="dividends" placeholder="0.00" min="0" step="0.01">
+      </div>
+    </div>
+    <div class="field">
+      <label>Notes</label>
+      <textarea id="notes" placeholder="Add any notes about this trade..."></textarea>
+    </div>
+  </div>
+
+  <button class="calc-btn" type="button" onclick="calculate()">Calculate ROI</button>
+
+  <!-- Results -->
+  <div class="results-section" id="results">
+
+    <div class="divider"></div>
+
+    <div class="results-header">
+      <h2>Results</h2>
+      <span class="ticker-badge hidden" id="results-ticker"></span>
+    </div>
+
+    <!-- Primary stat cards -->
+    <div class="grid4" style="margin-bottom:12px">
+      <div class="stat-card" id="card-net">
+        <span class="stat-label">Net gain / loss</span>
+        <span class="stat-value" id="r-net">—</span>
+        <span class="stat-sub" id="r-net-sub"></span>
+      </div>
+      <div class="stat-card" id="card-roi">
+        <span class="stat-label">Total ROI</span>
+        <span class="stat-value" id="r-roi">—</span>
+        <span class="stat-sub" id="r-roi-sub">Return on cost basis</span>
+      </div>
+      <div class="stat-card" id="card-annual">
+        <span class="stat-label">Annualized return</span>
+        <span class="stat-value" id="r-annual">—</span>
+        <span class="stat-sub" id="r-annual-sub"></span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-label">Holding period</span>
+        <span class="stat-value" id="r-period" style="font-size:22px">—</span>
+        <span class="stat-sub" id="r-period-sub"></span>
+      </div>
+    </div>
+
+    <!-- Secondary stats -->
+    <div class="grid3">
+      <div class="sec-stat">
+        <span class="stat-label">Cost basis</span>
+        <span class="stat-value sm" id="r-invested">—</span>
+        <span class="stat-sub">Invested + buy fees</span>
+      </div>
+      <div class="sec-stat">
+        <span class="stat-label">Net proceeds</span>
+        <span class="stat-value sm" id="r-received">—</span>
+        <span class="stat-sub">Received − sell fees + divs</span>
+      </div>
+      <div class="sec-stat">
+        <span class="stat-label">Total fees</span>
+        <span class="stat-value sm" id="r-fees">—</span>
+        <span class="stat-sub" id="r-fees-sub"></span>
+      </div>
+    </div>
+
+    <!-- Notes -->
+    <div class="notes-display hidden" id="notes-display">
+      <div class="notes-label">Notes</div>
+      <p id="notes-text"></p>
+    </div>
+
+    <button class="reset-btn" type="button" onclick="resetForm()">Clear & start over</button>
+  </div>
+
+</div>
+
+<script>
+  let mode = 'per-share';
+
+  // default sell date to today
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('sell-date').value = today;
+
+  function setMode(m) {
+    mode = m;
+    document.getElementById('per-share-inputs').classList.toggle('hidden', m !== 'per-share');
+    document.getElementById('total-inputs').classList.toggle('hidden', m !== 'total');
+    document.getElementById('btn-per-share').classList.toggle('active', m === 'per-share');
+    document.getElementById('btn-total').classList.toggle('active', m === 'total');
+  }
+
+  function fmt(n) {
+    return '$' + Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  function fmtSigned(n) {
+    return (n >= 0 ? '+' : '-') + fmt(n);
+  }
+
+  function fmtPct(n) {
+    return (n >= 0 ? '+' : '') + n.toFixed(2) + '%';
+  }
+
+  function setStatValue(id, text, cls) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = 'stat-value' + (cls ? ' ' + cls : '');
+  }
+
+  function calculate() {
+    let invested = 0, received = 0;
+
+    if (mode === 'per-share') {
+      const bp = parseFloat(document.getElementById('buy-price').value) || 0;
+      const sb = parseFloat(document.getElementById('shares-buy').value) || 0;
+      const sp = parseFloat(document.getElementById('sell-price').value) || 0;
+      const ss = parseFloat(document.getElementById('shares-sell').value) || 0;
+      if (bp <= 0 || sb <= 0) { alert('Please enter a valid buy price and number of shares.'); return; }
+      invested = bp * sb;
+      received = sp > 0 ? sp * (ss > 0 ? ss : sb) : 0;
+      if (received <= 0) { alert('Please enter a valid sell price.'); return; }
+    } else {
+      invested = parseFloat(document.getElementById('total-invested').value) || 0;
+      received = parseFloat(document.getElementById('total-received').value) || 0;
+      if (invested <= 0) { alert('Please enter a valid amount invested.'); return; }
+      if (received <= 0) { alert('Please enter a valid amount received.'); return; }
+    }
+
+    const feeBuy  = parseFloat(document.getElementById('fee-buy').value)  || 0;
+    const feeSell = parseFloat(document.getElementById('fee-sell').value) || 0;
+    const divs    = parseFloat(document.getElementById('dividends').value) || 0;
+    const totalFees = feeBuy + feeSell;
+
+    const costBasis   = invested + feeBuy;
+    const netReceived = received - feeSell + divs;
+    const netGain     = netReceived - costBasis;
+    const roi         = (netGain / costBasis) * 100;
+
+    const isGain = netGain >= 0;
+    const gainCls = isGain ? 'gain' : 'loss';
+
+    // Holding period
+    const buyDate  = document.getElementById('buy-date').value;
+    const sellDate = document.getElementById('sell-date').value;
+    let days = null, annualReturn = null;
+    let periodStr = '—', periodSub = '', annualStr = '—', annualSub = 'Enter dates to calculate';
+
+    if (buyDate && sellDate) {
+      const bd = new Date(buyDate);
+      const sd = new Date(sellDate);
+      days = Math.round((sd - bd) / 86400000);
+
+      if (days < 0) { alert('Sell date must be after buy date.'); return; }
+
+      if (days === 0) {
+        periodStr = 'Same day';
+        periodSub = 'Intraday trade';
+      } else if (days < 30) {
+        periodStr = days + ' days';
+        periodSub = 'Short-term';
+      } else if (days < 365) {
+        const months = Math.round(days / 30.44);
+        periodStr = months + ' mo';
+        periodSub = days + ' days';
+      } else {
+        const years = days / 365.25;
+        const yrs = Math.floor(years);
+        const rem = Math.round((years - yrs) * 12);
+        periodStr = yrs + 'y ' + (rem > 0 ? rem + 'm' : '');
+        periodSub = days.toLocaleString() + ' days total';
+      }
+
+      if (days >= 30) {
+        const yrs = days / 365.25;
+        annualReturn = (Math.pow(netReceived / costBasis, 1 / yrs) - 1) * 100;
+        annualStr = fmtPct(annualReturn);
+        annualSub = 'CAGR · ' + (days < 365 ? days + ' days' : (days / 365.25).toFixed(1) + ' yrs');
+      } else {
+        annualStr = 'N/A';
+        annualSub = 'Period too short to annualize';
+      }
+    }
+
+    const annualCls = annualReturn !== null ? (annualReturn >= 0 ? 'gain' : 'loss') : '';
+
+    // Ticker
+    const ticker = document.getElementById('ticker').value.trim().toUpperCase();
+    const tickerBadge = document.getElementById('results-ticker');
+    if (ticker) {
+      tickerBadge.textContent = ticker;
+      tickerBadge.classList.remove('hidden');
+    } else {
+      tickerBadge.classList.add('hidden');
+    }
+
+    // Set card highlight
+    document.getElementById('card-net').className = 'stat-card ' + (isGain ? 'highlight-gain' : 'highlight-loss');
+    document.getElementById('card-roi').className = 'stat-card ' + (isGain ? 'highlight-gain' : 'highlight-loss');
+
+    // Fill values
+    setStatValue('r-net', fmtSigned(netGain), gainCls);
+    document.getElementById('r-net-sub').textContent = divs > 0
+      ? 'Includes ' + fmt(divs) + ' dividends'
+      : 'After all fees';
+
+    setStatValue('r-roi', fmtPct(roi), gainCls);
+
+    setStatValue('r-annual', annualStr, annualCls);
+    document.getElementById('r-annual-sub').textContent = annualSub;
+
+    setStatValue('r-period', periodStr, '');
+    document.getElementById('r-period-sub').textContent = periodSub;
+
+    setStatValue('r-invested', fmt(costBasis), '');
+    setStatValue('r-received', fmt(netReceived), isGain ? 'gain' : 'loss');
+
+    setStatValue('r-fees', totalFees > 0 ? fmt(totalFees) : '$0.00', totalFees > 0 ? 'loss' : '');
+    document.getElementById('r-fees-sub').textContent = totalFees > 0
+      ? ((totalFees / costBasis * 100).toFixed(2) + '% of cost basis')
+      : 'No fees entered';
+
+    // Notes
+    const notes = document.getElementById('notes').value.trim();
+    const nd = document.getElementById('notes-display');
+    if (notes) {
+      document.getElementById('notes-text').textContent = notes;
+      nd.classList.remove('hidden');
+    } else {
+      nd.classList.add('hidden');
+    }
+
+    document.getElementById('results').classList.add('visible');
+    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function resetForm() {
+    document.querySelectorAll('input[type=number], input[type=text], textarea').forEach(el => el.value = '');
+    document.getElementById('buy-date').value = '';
+    document.getElementById('sell-date').value = today;
+    document.getElementById('results').classList.remove('visible');
+    setMode('per-share');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+</script>
+</body>
+</html>
