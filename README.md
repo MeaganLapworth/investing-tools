@@ -49,7 +49,7 @@ it month by month without paying for a subscription service.
 
 ---
 
-## Requirements
+## Requirements (dividend-bond-income-tracker)
 
 - **Python 3** — used to run the local server
   - Mac: already installed on most Macs; confirm by opening Terminal
