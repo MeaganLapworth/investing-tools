@@ -13,7 +13,8 @@ perform after fees and taxes?"
 
 ## Screenshot
 
-<!-- Drag and drop a screenshot here after uploading -->
+<img width="1831" height="770" alt="Screenshot 2026-06-06 at 10 02 24 PM" src="https://github.com/user-attachments/assets/34980f20-a860-4249-bffc-b2e55d555f62" />
+<img width="908" height="818" alt="Screenshot 2026-06-06 at 10 02 02 PM" src="https://github.com/user-attachments/assets/7fcd7e87-a42a-438d-9fa7-0661b1acb2a9" />
 
 ---
 
